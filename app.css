@@ -1,0 +1,89 @@
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed, 
+figure, figcaption, footer, header, hgroup, 
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	font-size: 100%;
+	font: inherit;
+	vertical-align: baseline;
+}
+canvas {
+    display: block;
+}
+html {
+    font-size: 16px;
+}
+body {
+    background: #ebf3f8;
+}
+.main_block {
+    background: #fff;
+    display: inline-block;
+    padding: 16px;
+    margin-right: 10px;
+}
+
+h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+div#btnJoined,
+div#btnLeft {
+    height: 46px;
+    line-height: 46px;
+    border-radius: 32px;
+    box-shadow: 0px 0px 1px 3px #e9eef1;
+    padding: 0 16px;
+    font-size: 1.2rem;
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+}
+div#btnJoined::before,
+div#btnLeft::before {
+    display: inline-block;
+    vertical-align: middle;
+    width: 30px;
+    height: 30px;
+    margin-right: 12px;
+    background-size: cover;
+    content: '';
+    position: relative;
+    top: -2px;
+} 
+div#btnJoined {
+    margin-right: 20px;
+}
+div#btnJoined::before {
+    background: url(icons/checked1.png) no-repeat;
+}
+div#btnLeft::before {
+    background: url(icons/checked2.png) no-repeat;
+}
+
+a {
+    color: #3494e5;
+    font-size: 1.4rem;
+    font-weight: 600;
+    display: block;
+    margin-top: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .1s ease-in-out;
+}
+a:hover {
+    color: #5daae9;
+}
