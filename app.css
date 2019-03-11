@@ -39,8 +39,7 @@ h1 {
     font-weight: 600;
 }
 
-div#btnJoined,
-div#btnLeft {
+div.btn {
     height: 46px;
     line-height: 46px;
     border-radius: 32px;
@@ -52,8 +51,7 @@ div#btnLeft {
     cursor: pointer;
     user-select: none;
 }
-div#btnJoined::before,
-div#btnLeft::before {
+div.btn::before {
     display: inline-block;
     vertical-align: middle;
     width: 30px;
@@ -64,16 +62,12 @@ div#btnLeft::before {
     position: relative;
     top: -2px;
 } 
-div#btnJoined {
+div.btn {
     margin-right: 20px;
 }
-div#btnJoined::before {
+div.btn::before {
     background: url(icons/checked1.png) no-repeat;
 }
-div#btnLeft::before {
-    background: url(icons/checked2.png) no-repeat;
-}
-
 a {
     color: #3494e5;
     font-size: 1.4rem;

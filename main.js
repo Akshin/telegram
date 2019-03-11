@@ -4,7 +4,6 @@ const json = [{"columns":[["x",1542412800000,1542499200000,1542585600000,1542672
 const doc = document,
     months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov', 'Dec'],
     body = doc.getElementsByTagName('body')[0],
-    pdng = 10,
     cvsWidth = 500,
     cvsHeght = 650,
     colors = {
@@ -20,102 +19,96 @@ const doc = document,
         }
     };
 
-function getDate(date) {
-    let d = new Date(date);
-    return months[d.getMonth()] + ' ' + d.getDate();
-}
+// function getDate(date) {
+//     let d = new Date(date);
+//     return months[d.getMonth()] + ' ' + d.getDate();
+// }
 
-function getMaxMin(mas) {
-    let maxY = mas[0].y, minY = mas[0].y, 
-        maxDate = mas[0].x, minDate = mas[0].x;
+// function dateTransform(date) {
+//     let month = date.getMonth() + 1;
+//     let day = date.getDate() + 1;
+//     let m = month < 10 ? '0' + month : '' + month;
+//     let d = day < 10 ? '0' + day : '' + day;
+//     return date.getFullYear() + '-' + m + '-' + d;
+// }
 
-    for(let el of mas) {
-        if(el.y > maxY) maxY = el.y;
-        if(el.y < minY) minY = el.y;
-        if(new Date(el.x) > new Date(maxDate)) maxDate = el.x;
-        if(new Date(el.x) < new Date(minDate)) minDate = el.x;
-    }
-    return {maxY, minY, maxDate, minDate};
-}
-function dateTransform(date) {
-    let month = date.getMonth() + 1;
-    let day = date.getDate() + 1;
-    let m = month < 10 ? '0' + month : '' + month;
-    let d = day < 10 ? '0' + day : '' + day;
-    return date.getFullYear() + '-' + m + '-' + d;
-}
+// function datediff(start, end) {
+//     return Math.round((new Date(end)-new Date(start))/(1000*60*60*24));
+// }
 
-function datediff(start, end) {
-    return Math.round((new Date(end)-new Date(start))/(1000*60*60*24));
-}
+// function getDatesBetween(start, end) {
+//     let mas = [], d = new Date(start);
+//     while(d <= new Date(end)) {
+//         mas.push( dateTransform(d) );
+//         d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)
+//     }
+//     return mas;
+// }
 
-function getDatesBetween(start, end) {
-    let mas = [], d = new Date(start);
-    while(d <= new Date(end)) {
-        mas.push( dateTransform(d) );
-        d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)
-    }
-    return mas;
-}
-
-function getDaysFromMin(current, dateList) {
-    for(let i = 0; i < dateList.length; i++) {
-        if(current === dateList[i]) return i;
-    }
-}
+// function getDaysFromMin(current, dateList) {
+//     for(let i = 0; i < dateList.length; i++) {
+//         if(current === dateList[i]) return i;
+//     }
+// }
 
 
 function CreateChart(id, data) {
     let mainBlock = doc.createElement('div'),
         title = doc.createElement('h1'),
         btnSwitchMode = doc.createElement('a'),
-        cvs = doc.createElement('canvas');
+        cvs = doc.createElement('canvas'),
+        ctx = cvs.getContext('2d');
 
     this.graphSize = cvsWidth;
-    this.resp = {x: [], lines: {}};
+    this.computedData = {
+        x: [],
+        y: [],
+        vpStartPoint: '0.75',
+        viewportPercent: '0.25',
+    }
+
+    //////////////////////////
+
+    this.resp = {x: {column: [], maxX: null, minX: null}, lines: {}};
     for(let key in data.columns) {
-        if(data.columns[key][0] === 'x') this.resp.x = data.columns[key].slice(1,); 
-            else {
-                this.resp.lines[data.columns[key][0]] = {};
-                this.resp.lines[data.columns[key][0]].column = data.columns[key].slice(1,);
-            }
+        if(data.columns[key][0] === 'x') {
+            this.resp.x.column = data.columns[key].slice(1,); 
+            this.resp.x.maxX = Math.max.apply(null, data.columns[key].slice(1,))
+            this.resp.x.minX = Math.min.apply(null, data.columns[key].slice(1,))
+        } else {
+            this.resp.lines[data.columns[key][0]] = {};
+            this.resp.lines[data.columns[key][0]].column = data.columns[key].slice(1,);
+            this.resp.lines[data.columns[key][0]].maxY = Math.max.apply(null, data.columns[key].slice(1,));
+            this.resp.lines[data.columns[key][0]].enabled = true;
+        }
     }
     for(let key in data.names) this.resp.lines[key].name = data.names[key];
     for(let key in data.colors) this.resp.lines[key].color = data.colors[key];
-    
     console.log(this.resp)
-    
 
     mainBlock.className = 'main_block day_mode';
     title.innerText = 'Followers';
     btnSwitchMode.innerText = 'Switch to Night Mode';
 
-
-
     cvs.id = id;
     cvs.width = cvsWidth;
     cvs.height = cvsHeght;
 
-
     mainBlock.appendChild(title);
     mainBlock.appendChild(cvs);
+    for(let el in this.resp.lines) {
+        let btn = doc.createElement('div');;
+        btn.className = 'btn';
+        btn.innerText = this.resp.lines[el].name;
+        mainBlock.appendChild(btn);
+        btn.addEventListener('click', () => {
+            this.resp.lines[el].enabled = !this.resp.lines[el].enabled;
+        })
+    }
     mainBlock.appendChild(btnSwitchMode);
     body.appendChild(mainBlock)
 
-
-    let ctx = cvs.getContext('2d');
-
-    ctx.beginPath();
-    ctx.strokeStyle = colors.gray;
-    ctx.lineWidth = 1;
-    for(let i = 0; i < 5; i++) {
-        ctx.moveTo(0, this.graphSize - this.graphSize / 5 * i);
-        ctx.lineTo(this.graphSize, this.graphSize - this.graphSize / 5 * i);
-    };
-    ctx.stroke();
-    ctx.closePath();
-
-    // methods
+    // drow control panel
 
     this.drowControlPanel = function() {
         ctx.beginPath();
@@ -126,69 +119,97 @@ function CreateChart(id, data) {
         ctx.closePath();
     }
 
-
-    this.drowGraph = function() {
-        this.common.stepY = Math.round(Math.max(this.lineJoined.maxY, this.lineLeft.maxY) / 5);
-        this.common.stepDate = new Date(this.lineJoined.maxDate) > new Date(this.lineLeft.maxDate) ? Math.round(this.lineJoined.maxDate / 6) : Math.round(this.lineLeft.maxDate / 6);
-
-        let diff = datediff(this.lineJoined.minDate, this.lineJoined.maxDate);
-        this.common.stepDate = diff / 6; // дней за 1 шан по оси Х
-        this.common.showMonths = [];
-        this.common.dateFullRange = getDatesBetween(this.lineJoined.minDate, this.lineJoined.maxDate);
-        for(let i = 0; i <= this.common.dateFullRange.length; i += this.common.stepDate) {
-            if(this.common.dateFullRange[i]) this.common.showMonths.push(this.common.dateFullRange[i])
-        }
-
+    this.drowStaticLines = function() {
+        // drow y lines
         ctx.beginPath();
-        ctx.fillStyle = 'black';
-        ctx.font = '16px Arial Black';    
-        for(let i = 0; i < this.common.showMonths.length; i++) {
-            ctx.fillText(getDate(this.common.showMonths[i]), this.graphSize / this.common.showMonths.length * i + 15, this.graphSize + 20);
-        }
+        ctx.strokeStyle = colors.gray;
+        ctx.lineWidth = 1;
+        for(let i = 0; i < 5; i++) {
+            ctx.moveTo(0, this.graphSize - this.graphSize / 5 * i);
+            ctx.lineTo(this.graphSize, this.graphSize - this.graphSize / 5 * i);
+        };
+        ctx.stroke();
         ctx.closePath();
+    }
 
-        /////////////////////
+    this.calculate = function() {
+        let x = [], y = [], xtepX, stepX, maxXList = [], maxYList = [], maxTotalX = 0;
+        for(let i in this.resp.lines) { // get max Y point
+            if(!this.resp.lines[i].enabled) continue;
+            maxYList.push(this.resp.lines[i].maxY);
+        };
+        maxTotalX = Math.round(Math.max.apply(null, maxYList));
+        for(let i = 0; i < maxTotalX; i += Math.round(maxTotalX / 5)) y.push(i); // push Y points to list
 
-        this.common.stepY = this.lineJoined.maxY / 5; // фолловеров на 1 шаг по оси Y
-        for(let i = 0; i < this.lineJoined.maxY; i += this.common.stepY) {
-            this.common.showY.push(i);
-        }
+        this.computedData.y = y;
+    }
 
+    this.drowGraphLines = function() {
         ctx.beginPath();
         ctx.fillStyle = 'black';
         ctx.font = '16px Arial Black';   
-        for(let i = 0; i < this.common.showY.length; i++) {
-            ctx.fillText(Math.round(this.common.showY[i]), 0, this.graphSize - this.graphSize / 5 * i - 10)
-        }
+        for(let i in this.computedData.y) {
+            ctx.fillText(this.computedData.y[i], 0, this.graphSize - this.graphSize / 5 * i - 10)
+        } 
         ctx.closePath();
+        // this.common.stepDate = new Date(this.lineJoined.maxDate) > new Date(this.lineLeft.maxDate) ? Math.round(this.lineJoined.maxDate / 6) : Math.round(this.lineLeft.maxDate / 6);
+
+        // let diff = datediff(this.lineJoined.minDate, this.lineJoined.maxDate);
+        // this.common.stepDate = diff / 6; // дней за 1 шан по оси Х
+        // this.common.showMonths = [];
+        // this.common.dateFullRange = getDatesBetween(this.lineJoined.minDate, this.lineJoined.maxDate);
+        // for(let i = 0; i <= this.common.dateFullRange.length; i += this.common.stepDate) {
+        //     if(this.common.dateFullRange[i]) this.common.showMonths.push(this.common.dateFullRange[i])
+        // }
+
+        // ctx.beginPath();
+        // ctx.fillStyle = 'black';
+        // ctx.font = '16px Arial Black';    
+        // for(let i = 0; i < this.common.showMonths.length; i++) {
+        //     ctx.fillText(getDate(this.common.showMonths[i]), this.graphSize / this.common.showMonths.length * i + 15, this.graphSize + 20);
+        // }
+        // ctx.closePath();
 
         /////////////////////
-        ctx.beginPath();
-        ctx.strokeStyle = colors.green;
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        let pxlsOnPercentY = this.graphSize / this.lineJoined.maxY,
-            pxlsOnPercentX = this.graphSize / this.common.dateFullRange.length;
-        ctx.moveTo(0, this.graphSize - (pxlsOnPercentY * this.lineJoined.main[0].y))
-        for(let i = 1; i < this.lineJoined.main.length; i++) {
-            ctx.lineTo(this.graphSize - pxlsOnPercentX * getDaysFromMin(this.lineJoined.main[i].x, this.common.dateFullRange), this.graphSize - (pxlsOnPercentY * this.lineJoined.main[i].y))
-        }
-        ctx.stroke();
-        ctx.closePath();
+
+        // this.common.stepY = this.lineJoined.maxY / 5; // фолловеров на 1 шаг по оси Y
+        
+
+        /////////////////////
+        // ctx.beginPath();
+        // ctx.strokeStyle = colors.green;
+        // ctx.lineWidth = 2;
+        // ctx.lineCap = 'round';
+        // let pxlsOnPercentY = this.graphSize / this.lineJoined.maxY,
+        //     pxlsOnPercentX = this.graphSize / this.common.dateFullRange.length;
+        // ctx.moveTo(0, this.graphSize - (pxlsOnPercentY * this.lineJoined.main[0].y))
+        // for(let i = 1; i < this.lineJoined.main.length; i++) {
+        //     ctx.lineTo(this.graphSize - pxlsOnPercentX * getDaysFromMin(this.lineJoined.main[i].x, this.common.dateFullRange), this.graphSize - (pxlsOnPercentY * this.lineJoined.main[i].y))
+        // }
+        // ctx.stroke();
+        // ctx.closePath();
 
 
     }
 
+    this.calculate();
     this.drow = function() {
-        // ctx.clearRect(0, 0, cvs.width, cvs.height);
-        
-        // drow control panel
+        requestAnimationFrame(this.drow.bind(this))
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+        this.drowStaticLines();
+        this.drowGraphLines();
         this.drowControlPanel();
-        this.drowGraph()
-
+        // this.drowControlPanel();
     }
 
     this.drow();
+
+
+    this.addBtnEvent = function(el) {
+        el.addEventListener('click', this.calculate.bind(this))
+    }
+
+    Array.prototype.forEach.call(doc.getElementsByClassName('btn'), this.addBtnEvent.bind(this))
 
 
 }
@@ -202,7 +223,6 @@ document.addEventListener("DOMContentLoaded", ready);
 function ready() {
     console.clear();
     for(let i = 0; i < json.length; i++) {
-        console.log(json[i])
         new CreateChart('canvas' + ++i, json[i]);
         return;
     }
