@@ -19,9 +19,26 @@ const doc = document,
         }
     };
 
-// function getDate(date) {
-//     let d = new Date(date);
-//     return months[d.getMonth()] + ' ' + d.getDate();
+// function timeConverter(UNIX_timestamp){
+//     let a = new Date(UNIX_timestamp * 1000);
+//     let year = a.getFullYear();
+//     let month = months[a.getMonth()];
+//     let date = a.getDate();
+//     return year + ' ' + month + ' ' + date;
+//   }
+function getDiff(timestamp1, timestamp2) {
+    let difference = timestamp1 - timestamp2;
+    return Math.abs(Math.floor(difference/1000/60/60/24));
+}
+
+
+// function getDateRange(start, end) {
+//     let st = start, mas = [];
+//     while(st <= end) {
+//         mas.push(st);
+//         st += 1000 * 60 * 60 * 24;
+//     }
+//     return mas;
 // }
 
 // function dateTransform(date) {
@@ -36,20 +53,18 @@ const doc = document,
 //     return Math.round((new Date(end)-new Date(start))/(1000*60*60*24));
 // }
 
-// function getDatesBetween(start, end) {
-//     let mas = [], d = new Date(start);
-//     while(d <= new Date(end)) {
-//         mas.push( dateTransform(d) );
-//         d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)
-//     }
-//     return mas;
-// }
 
 // function getDaysFromMin(current, dateList) {
 //     for(let i = 0; i < dateList.length; i++) {
 //         if(current === dateList[i]) return i;
 //     }
 // }
+
+function getDate(date) {
+    let d = new Date();
+    d.setTime(date);
+    return months[d.getMonth()] + ' ' + d.getDate();
+}
 
 
 function CreateChart(id, data) {
@@ -69,16 +84,15 @@ function CreateChart(id, data) {
 
     //////////////////////////
 
-    this.resp = {x: {column: [], maxX: null, minX: null}, lines: {}};
+    this.resp = {x: {column: []}, lines: {}};
     for(let key in data.columns) {
         if(data.columns[key][0] === 'x') {
-            this.resp.x.column = data.columns[key].slice(1,); 
-            this.resp.x.maxX = Math.max.apply(null, data.columns[key].slice(1,))
-            this.resp.x.minX = Math.min.apply(null, data.columns[key].slice(1,))
+            this.resp.x.column = data.columns[key].slice(1,);
         } else {
+            let col = data.columns[key].slice(1,);
             this.resp.lines[data.columns[key][0]] = {};
-            this.resp.lines[data.columns[key][0]].column = data.columns[key].slice(1,);
-            this.resp.lines[data.columns[key][0]].maxY = Math.max.apply(null, data.columns[key].slice(1,));
+            this.resp.lines[data.columns[key][0]].column = col;
+            this.resp.lines[data.columns[key][0]].maxY = Math.max.apply(null, col);
             this.resp.lines[data.columns[key][0]].enabled = true;
         }
     }
@@ -108,10 +122,9 @@ function CreateChart(id, data) {
     mainBlock.appendChild(btnSwitchMode);
     body.appendChild(mainBlock)
 
-    // drow control panel
 
     this.drowControlPanel = function() {
-        ctx.beginPath();
+        ctx.beginPath(); // drow control panel
         ctx.rect(0, this.graphSize + 50, this.graphSize, 70);
         ctx.fillStyle = '#f5f9fb';
         ctx.fill();
@@ -120,8 +133,7 @@ function CreateChart(id, data) {
     }
 
     this.drowStaticLines = function() {
-        // drow y lines
-        ctx.beginPath();
+        ctx.beginPath(); // drow y lines
         ctx.strokeStyle = colors.gray;
         ctx.lineWidth = 1;
         for(let i = 0; i < 5; i++) {
@@ -133,7 +145,7 @@ function CreateChart(id, data) {
     }
 
     this.calculate = function() {
-        let x = [], y = [], xtepX, stepX, maxXList = [], maxYList = [], maxTotalX = 0;
+        let x = [], y = [], stepX, maxYList = [], maxTotalX = 0;
         for(let i in this.resp.lines) { // get max Y point
             if(!this.resp.lines[i].enabled) continue;
             maxYList.push(this.resp.lines[i].maxY);
@@ -141,53 +153,47 @@ function CreateChart(id, data) {
         maxTotalX = Math.round(Math.max.apply(null, maxYList));
         for(let i = 0; i < maxTotalX; i += Math.round(maxTotalX / 5)) y.push(i); // push Y points to list
 
+        stepX = Math.round(this.resp.x.column.length / 6);
+        for(let i = 0; i < this.resp.x.column.length; i += stepX) x.push(this.resp.x.column[i]);
+
         this.computedData.y = y;
+        this.computedData.x = x;
     }
 
     this.drowGraphLines = function() {
-        ctx.beginPath();
+        ctx.beginPath(); // drow Y
         ctx.fillStyle = 'black';
         ctx.font = '16px Arial Black';   
         for(let i in this.computedData.y) {
             ctx.fillText(this.computedData.y[i], 0, this.graphSize - this.graphSize / 5 * i - 10)
         } 
         ctx.closePath();
-        // this.common.stepDate = new Date(this.lineJoined.maxDate) > new Date(this.lineLeft.maxDate) ? Math.round(this.lineJoined.maxDate / 6) : Math.round(this.lineLeft.maxDate / 6);
 
-        // let diff = datediff(this.lineJoined.minDate, this.lineJoined.maxDate);
-        // this.common.stepDate = diff / 6; // дней за 1 шан по оси Х
-        // this.common.showMonths = [];
-        // this.common.dateFullRange = getDatesBetween(this.lineJoined.minDate, this.lineJoined.maxDate);
-        // for(let i = 0; i <= this.common.dateFullRange.length; i += this.common.stepDate) {
-        //     if(this.common.dateFullRange[i]) this.common.showMonths.push(this.common.dateFullRange[i])
-        // }
+        ctx.beginPath(); // drow X
+        ctx.fillStyle = 'black';
+        ctx.font = '16px Arial Black'; 
+        for(let i = 0; i < this.computedData.x.length; i++) { 
+            ctx.fillText(getDate(this.computedData.x[i]), this.graphSize / this.computedData.x.length * i + 15, this.graphSize + 20);
+        }
+        ctx.closePath();
 
-        // ctx.beginPath();
-        // ctx.fillStyle = 'black';
-        // ctx.font = '16px Arial Black';    
-        // for(let i = 0; i < this.common.showMonths.length; i++) {
-        //     ctx.fillText(getDate(this.common.showMonths[i]), this.graphSize / this.common.showMonths.length * i + 15, this.graphSize + 20);
-        // }
-        // ctx.closePath();
-
-        /////////////////////
-
-        // this.common.stepY = this.lineJoined.maxY / 5; // фолловеров на 1 шаг по оси Y
-        
-
-        /////////////////////
-        // ctx.beginPath();
-        // ctx.strokeStyle = colors.green;
-        // ctx.lineWidth = 2;
-        // ctx.lineCap = 'round';
-        // let pxlsOnPercentY = this.graphSize / this.lineJoined.maxY,
-        //     pxlsOnPercentX = this.graphSize / this.common.dateFullRange.length;
-        // ctx.moveTo(0, this.graphSize - (pxlsOnPercentY * this.lineJoined.main[0].y))
-        // for(let i = 1; i < this.lineJoined.main.length; i++) {
-        //     ctx.lineTo(this.graphSize - pxlsOnPercentX * getDaysFromMin(this.lineJoined.main[i].x, this.common.dateFullRange), this.graphSize - (pxlsOnPercentY * this.lineJoined.main[i].y))
-        // }
-        // ctx.stroke();
-        // ctx.closePath();
+        for(let i in this.resp.lines) { // drow lines
+            if(!this.resp.lines[i].enabled) continue;
+            let pxlsPerPointY = this.graphSize / this.computedData.y[this.computedData.y - 1], // pxls on 1 point
+                pxlsPerPointX = this.graphSize / getDiff(this.computedData.x[0], this.computedData.x[this.computedData.x.length - 1]); // pxls on 1 day
+            
+            ctx.beginPath(); 
+            ctx.strokeStyle = this.resp.lines[i].color;
+            ctx.moveTo(0, this.graphSize - pxlsPerPointY * this.resp.lines[i][0]) 
+            for(let j = 1; j < this.resp.lines[i].column.length; j++) {
+                ctx.lineTo(
+                    this.graphSize - pxlsPerPointX * this.computedData.x[j],
+                    this.graphSize - pxlsPerPointY * this.resp.lines[i][j]
+                )
+            }
+            ctx.stroke();
+            ctx.closePath();
+        }
 
 
     }
@@ -221,11 +227,9 @@ function CreateChart(id, data) {
 document.addEventListener("DOMContentLoaded", ready);
 
 function ready() {
-    console.clear();
     for(let i = 0; i < json.length; i++) {
         new CreateChart('canvas' + ++i, json[i]);
         return;
     }
-
 }
 
