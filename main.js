@@ -78,8 +78,11 @@ function CreateChart(id, data) {
     this.computedData = {
         x: [],
         y: [],
-        vpStartPoint: '0.75',
-        viewportPercent: '0.25',
+        xAxis: [],
+        yAxis: [],
+        maxY: 0,
+        vpStartPoint: 0.75,
+        viewportPercent: 0.25,
     }
 
     //////////////////////////
@@ -145,17 +148,18 @@ function CreateChart(id, data) {
     }
 
     this.calculate = function() {
-        let x = [], y = [], stepX, maxYList = [], maxTotalX = 0;
+        let x = [], y = [], stepX, maxYList = [], maxTotalY = 0;
         for(let i in this.resp.lines) { // get max Y point
             if(!this.resp.lines[i].enabled) continue;
             maxYList.push(this.resp.lines[i].maxY);
         };
-        maxTotalX = Math.round(Math.max.apply(null, maxYList));
-        for(let i = 0; i < maxTotalX; i += Math.round(maxTotalX / 5)) y.push(i); // push Y points to list
+        maxTotalY = Math.round(Math.max.apply(null, maxYList));
+        for(let i = 0; i < maxTotalY; i += Math.round(maxTotalY / 5)) y.push(i); // push Y points to list
 
         stepX = Math.round(this.resp.x.column.length / 6);
         for(let i = 0; i < this.resp.x.column.length; i += stepX) x.push(this.resp.x.column[i]);
 
+        this.computedData.maxY = maxTotalY;
         this.computedData.y = y;
         this.computedData.x = x;
     }
@@ -179,17 +183,20 @@ function CreateChart(id, data) {
 
         for(let i in this.resp.lines) { // drow lines
             if(!this.resp.lines[i].enabled) continue;
-            let pxlsPerPointY = this.graphSize / this.computedData.y[this.computedData.y - 1], // pxls on 1 point
-                pxlsPerPointX = this.graphSize / getDiff(this.computedData.x[0], this.computedData.x[this.computedData.x.length - 1]); // pxls on 1 day
-            
+            let pxlsPerPointY = this.computedData.maxY / this.graphSize ; // pxls on 1 point
+
             ctx.beginPath(); 
             ctx.strokeStyle = this.resp.lines[i].color;
-            ctx.moveTo(0, this.graphSize - pxlsPerPointY * this.resp.lines[i][0]) 
-            for(let j = 1; j < this.resp.lines[i].column.length; j++) {
+            ctx.moveTo(0, this.graphSize - pxlsPerPointY * this.resp.lines[i].column[0]) 
+            for(let j = 1; j <= this.computedData.x.length; j++) {
                 ctx.lineTo(
-                    this.graphSize - pxlsPerPointX * this.computedData.x[j],
-                    this.graphSize - pxlsPerPointY * this.resp.lines[i][j]
+                    this.graphSize / this.computedData.x.length * j,
+                    this.graphSize - this.graphSize / this.computedData.maxY * j
                 )
+                // console.log(
+                //     this.graphSize / this.computedData.x.length * j,
+                //     this.graphSize - pxlsPerPointY * this.resp.lines[i].column[j]
+                // )
             }
             ctx.stroke();
             ctx.closePath();
