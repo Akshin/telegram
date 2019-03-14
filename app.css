@@ -50,24 +50,24 @@ div.btn {
     position: relative;
     cursor: pointer;
     user-select: none;
+    min-width: 70px;
+
 }
-div.btn::before {
+div.btn em {
     display: inline-block;
-    vertical-align: middle;
     width: 30px;
     height: 30px;
     margin-right: 12px;
-    background-size: cover;
-    content: '';
-    position: relative;
-    top: -2px;
+    line-height: 30px;
+    background: #e1ecf1;
+    border-radius: 50%;
+    text-align: center;
+    color: red;
 } 
 div.btn {
     margin-right: 20px;
 }
-div.btn::before {
-    background: url(icons/checked1.png) no-repeat;
-}
+
 a {
     color: #3494e5;
     font-size: 1.4rem;

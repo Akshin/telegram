@@ -128,6 +128,8 @@ function CreateChart(data) {
             resp.lines[data.columns[key][0]].column = col;
             resp.lines[data.columns[key][0]].columnComputed = [];
             resp.lines[data.columns[key][0]].enabled = true;
+            resp.lines[data.columns[key][0]].maxY = Math.max.apply(null, col);
+            
         }
     }
     for(let key in data.names) resp.lines[key].name = data.names[key];
@@ -144,25 +146,27 @@ function CreateChart(data) {
     mainBlock.appendChild(title);
     mainBlock.appendChild(cvs);
     for(let el in resp.lines) {
-        let btn = doc.createElement('div');;
-        btn.className = 'btn';
+        let btn = doc.createElement('div'),
+            em = doc.createElement('em');
+        em.innerHTML = '&#10004;';
         btn.innerText = resp.lines[el].name;
+        btn.insertBefore(em, btn.firstChild);
+        btn.className = 'btn';
         mainBlock.appendChild(btn);
         btn.addEventListener('click', () => {
             resp.lines[el].enabled = !resp.lines[el].enabled;
             calculate();
         })
+        createRect(0, graphSize + 50, graphSize, 70, 'rgba(0, 0, 0, 0)');
     }
     mainBlock.appendChild(btnSwitchMode);
     body.appendChild(mainBlock)
 
 
     function drowControlPanel() {
-        createRect(0, graphSize + 50, graphSize, 70, 'rgba(0, 0, 0, 0)');
-
         createRect(cntrPanel.x, cntrPanel.y, cntrPanel.w, cntrPanel.h, 'rgba(0, 0, 0, 0)', true);
-        createRect(bgPanel1.x, bgPanel1.y, bgPanel1.w, bgPanel1.h, 'rgba(136, 179, 200, 0.1)');
-        createRect(bgPanel2.x, bgPanel2.y, bgPanel2.w, bgPanel2.h, 'rgba(136, 179, 200, 0.1)');
+        createRect(bgPanel1.x, bgPanel1.y, bgPanel1.w, bgPanel1.h, 'rgba(136, 179, 200, 0.3)');
+        createRect(bgPanel2.x, bgPanel2.y, bgPanel2.w, bgPanel2.h, 'rgba(136, 179, 200, 0.3)');
     }
 
     function drowStaticLines() {
@@ -207,7 +211,6 @@ function CreateChart(data) {
         computedData.maxY = maxTotalY;
         computedData.yAxis = yAxis;
         computedData.xAxis = xAxis;
-
     }
 
     function drowGraphLines() {
@@ -242,6 +245,34 @@ function CreateChart(data) {
             ctx.stroke();
             ctx.closePath();
         }
+
+        let cpMaxYList = [];
+        for(let i in resp.lines) {
+            if(!resp.lines[i].enabled) continue;
+            cpMaxYList.push(resp.lines[i].maxY);
+        }
+        cpMaxY = Math.max.apply(null, cpMaxYList);
+        for(let i in resp.lines) {
+            if(!resp.lines[i].enabled) continue;
+            let pxlsPerPointY = 60 / cpMaxY,
+                pxlsPerPointX = graphSize / resp.x.column.length; // pxls on 1 point
+
+            ctx.beginPath(); 
+            ctx.strokeStyle = resp.lines[i].color;
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round'
+            ctx.moveTo(0, graphSize + 110 - pxlsPerPointY * resp.lines[i].column[0]) 
+            for(let j = 1; j < resp.lines[i].column.length; j++) {
+                ctx.lineTo(
+                    pxlsPerPointX * j,
+                    graphSize + 110 - pxlsPerPointY * resp.lines[i].column[j]
+                )
+            }
+            ctx.stroke();
+            ctx.closePath();
+        }
+
+
 
 
     }
@@ -321,7 +352,7 @@ document.addEventListener("DOMContentLoaded", ready);
 
 function ready() {
     for(let i = 0; i < json.length; i++) {
-        new CreateChart(json[i]);
+        return new CreateChart(json[i]);
     }
 }
 
