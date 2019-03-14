@@ -8,10 +8,9 @@ const doc = document,
     cvsHeght = 650,
     colors = {
         gray: '#e1e1e1',
-        text: '9faab1',
         dayMode: {
             bg: '#fff',
-            text: '#000'
+            text: '#879196'
         },
         nightMode: {
             bg: '#242f3e',
@@ -19,46 +18,10 @@ const doc = document,
         }
     };
 
-// function timeConverter(UNIX_timestamp){
-//     let a = new Date(UNIX_timestamp * 1000);
-//     let year = a.getFullYear();
-//     let month = months[a.getMonth()];
-//     let date = a.getDate();
-//     return year + ' ' + month + ' ' + date;
-//   }
 function getDiff(timestamp1, timestamp2) {
     let difference = timestamp1 - timestamp2;
     return Math.abs(Math.floor(difference/1000/60/60/24));
 }
-
-
-// function getDateRange(start, end) {
-//     let st = start, mas = [];
-//     while(st <= end) {
-//         mas.push(st);
-//         st += 1000 * 60 * 60 * 24;
-//     }
-//     return mas;
-// }
-
-// function dateTransform(date) {
-//     let month = date.getMonth() + 1;
-//     let day = date.getDate() + 1;
-//     let m = month < 10 ? '0' + month : '' + month;
-//     let d = day < 10 ? '0' + day : '' + day;
-//     return date.getFullYear() + '-' + m + '-' + d;
-// }
-
-// function datediff(start, end) {
-//     return Math.round((new Date(end)-new Date(start))/(1000*60*60*24));
-// }
-
-
-// function getDaysFromMin(current, dateList) {
-//     for(let i = 0; i < dateList.length; i++) {
-//         if(current === dateList[i]) return i;
-//     }
-// }
 
 function getDate(date) {
     let d = new Date();
@@ -67,136 +30,214 @@ function getDate(date) {
 }
 
 
-function CreateChart(id, data) {
+function CreateChart(data) {
     let mainBlock = doc.createElement('div'),
         title = doc.createElement('h1'),
         btnSwitchMode = doc.createElement('a'),
         cvs = doc.createElement('canvas'),
-        ctx = cvs.getContext('2d');
+        ctx = cvs.getContext('2d'),
+        night_mode = false;
 
-    this.graphSize = cvsWidth;
-    this.computedData = {
-        x: [],
-        y: [],
+    let graphSize = cvsWidth,
+    computedData = {
         xAxis: [],
         yAxis: [],
         maxY: 0,
-        vpStartPoint: 0.75,
-        viewportPercent: 0.25,
     }
+    // CONTROL PANEL
 
+    let pos = {
+        x: graphSize - graphSize / 4,
+        w: graphSize / 4,
+        h: 60,
+      },
+      cntrPanel = {
+        x: graphSize - graphSize / 4,
+        y: graphSize + 50,
+        w: graphSize / 4,
+        h: 60,
+        selected: false,
+        resizingLeft: false,
+        resizingRight: false,
+      },
+      bgPanel1 = {
+        x: 0,
+        y: graphSize + 50,
+        w: graphSize - graphSize / 4,
+        h: 60,
+      },
+      bgPanel2 = {
+        x: graphSize,
+        y: graphSize + 50,
+        w: 0,
+        h: 60,
+      }
+
+      function createRect(x, y, w, h, fillStyle, isMainBlock) {
+        if(isMainBlock) {
+            ctx.beginPath(); 
+            ctx.fillStyle = fillStyle;
+            ctx.strokeStyle = 'rgba(173, 206, 225, 0.6)';
+            
+            ctx.lineWidth = 6;
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, y + h);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.lineWidth = 1;
+            ctx.moveTo(x, y + h);
+            ctx.lineTo(x + w, y + h);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.lineWidth = 6;
+            ctx.moveTo(x + w, y + h);
+            ctx.lineTo(x + w, y);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.lineWidth = 1;
+            ctx.moveTo(x + w, y);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            
+            ctx.fill();
+            ctx.closePath();
+        } else {
+            ctx.beginPath(); 
+            ctx.fillStyle = fillStyle;
+            ctx.rect(x, y, w, h);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0)'
+            ctx.stroke();
+            ctx.closePath();
+        }
+        
+    }
     //////////////////////////
 
-    this.resp = {x: {column: []}, lines: {}};
+    let resp = {x: {}, lines: {}};
     for(let key in data.columns) {
         if(data.columns[key][0] === 'x') {
-            this.resp.x.column = data.columns[key].slice(1,);
+            resp.x.column = data.columns[key].slice(1,);
+            resp.x.columnComputed = [];
         } else {
             let col = data.columns[key].slice(1,);
-            this.resp.lines[data.columns[key][0]] = {};
-            this.resp.lines[data.columns[key][0]].column = col;
-            this.resp.lines[data.columns[key][0]].maxY = Math.max.apply(null, col);
-            this.resp.lines[data.columns[key][0]].enabled = true;
+            resp.lines[data.columns[key][0]] = {};
+            resp.lines[data.columns[key][0]].column = col;
+            resp.lines[data.columns[key][0]].columnComputed = [];
+            resp.lines[data.columns[key][0]].enabled = true;
         }
     }
-    for(let key in data.names) this.resp.lines[key].name = data.names[key];
-    for(let key in data.colors) this.resp.lines[key].color = data.colors[key];
-    console.log(this.resp)
+    for(let key in data.names) resp.lines[key].name = data.names[key];
+    for(let key in data.colors) resp.lines[key].color = data.colors[key];
+    console.log(resp)
 
     mainBlock.className = 'main_block day_mode';
     title.innerText = 'Followers';
     btnSwitchMode.innerText = 'Switch to Night Mode';
-
-    cvs.id = id;
+    btnSwitchMode.addEventListener('click', function() {mainBlock.classList.toggle('night_mode'); night_mode = !night_mode})
     cvs.width = cvsWidth;
     cvs.height = cvsHeght;
 
     mainBlock.appendChild(title);
     mainBlock.appendChild(cvs);
-    for(let el in this.resp.lines) {
+    for(let el in resp.lines) {
         let btn = doc.createElement('div');;
         btn.className = 'btn';
-        btn.innerText = this.resp.lines[el].name;
+        btn.innerText = resp.lines[el].name;
         mainBlock.appendChild(btn);
         btn.addEventListener('click', () => {
-            this.resp.lines[el].enabled = !this.resp.lines[el].enabled;
+            resp.lines[el].enabled = !resp.lines[el].enabled;
+            calculate();
         })
     }
     mainBlock.appendChild(btnSwitchMode);
     body.appendChild(mainBlock)
 
 
-    this.drowControlPanel = function() {
-        ctx.beginPath(); // drow control panel
-        ctx.rect(0, this.graphSize + 50, this.graphSize, 70);
-        ctx.fillStyle = '#f5f9fb';
-        ctx.fill();
-        ctx.stroke();
-        ctx.closePath();
+    function drowControlPanel() {
+        createRect(0, graphSize + 50, graphSize, 70, 'rgba(0, 0, 0, 0)');
+
+        createRect(cntrPanel.x, cntrPanel.y, cntrPanel.w, cntrPanel.h, 'rgba(0, 0, 0, 0)', true);
+        createRect(bgPanel1.x, bgPanel1.y, bgPanel1.w, bgPanel1.h, 'rgba(136, 179, 200, 0.1)');
+        createRect(bgPanel2.x, bgPanel2.y, bgPanel2.w, bgPanel2.h, 'rgba(136, 179, 200, 0.1)');
     }
 
-    this.drowStaticLines = function() {
+    function drowStaticLines() {
         ctx.beginPath(); // drow y lines
         ctx.strokeStyle = colors.gray;
         ctx.lineWidth = 1;
         for(let i = 0; i < 5; i++) {
-            ctx.moveTo(0, this.graphSize - this.graphSize / 5 * i);
-            ctx.lineTo(this.graphSize, this.graphSize - this.graphSize / 5 * i);
+            ctx.moveTo(0, graphSize - graphSize / 5 * i);
+            ctx.lineTo(graphSize, graphSize - graphSize / 5 * i);
         };
         ctx.stroke();
         ctx.closePath();
     }
 
-    this.calculate = function() {
-        let x = [], y = [], stepX, maxYList = [], maxTotalY = 0;
-        for(let i in this.resp.lines) { // get max Y point
-            if(!this.resp.lines[i].enabled) continue;
-            maxYList.push(this.resp.lines[i].maxY);
+    function calculate() {
+        let xAxis = [], yAxis = [], stepX, maxYList = [], maxTotalY = 0, 
+            stepRange = cntrPanel.w * 100 / graphSize,
+            stepStart = cntrPanel.x * 100 / graphSize;
+
+        for(let i in resp.lines) { 
+            if(!resp.lines[i].enabled) continue;
+            let pointStart = resp.lines[i].column.length * stepStart * 0.01,
+                pointRange = resp.lines[i].column.length * stepRange * 0.01;
+            resp.lines[i].columnComputed = resp.lines[i].column.slice(pointStart, pointStart + pointRange); // create Computed Y
         };
+        for(let i in resp.lines) {
+            if(!resp.lines[i].enabled) continue;
+            maxYList.push(Math.round(Math.max.apply(null, resp.lines[i].columnComputed)))
+        }
+
+        let pointStart = resp.x.column.length * stepStart * 0.01,
+            pointRange = resp.x.column.length * stepRange * 0.01;
+        resp.x.columnComputed = resp.x.column.slice(pointStart, pointStart + pointRange); // create Computed X
+
         maxTotalY = Math.round(Math.max.apply(null, maxYList));
-        for(let i = 0; i < maxTotalY; i += Math.round(maxTotalY / 5)) y.push(i); // push Y points to list
+        for(let i = 0; i < maxTotalY; i += Math.round(maxTotalY / 5)) yAxis.push(i);
 
-        stepX = Math.round(this.resp.x.column.length / 6);
-        for(let i = 0; i < this.resp.x.column.length; i += stepX) x.push(this.resp.x.column[i]);
+        
+        stepX = Math.round(resp.x.columnComputed.length / 6);
+        for(let i = 0; i < resp.x.columnComputed.length; i += stepX) xAxis.push(resp.x.columnComputed[i]);
 
-        this.computedData.maxY = maxTotalY;
-        this.computedData.y = y;
-        this.computedData.x = x;
+        computedData.maxY = maxTotalY;
+        computedData.yAxis = yAxis;
+        computedData.xAxis = xAxis;
+
     }
 
-    this.drowGraphLines = function() {
+    function drowGraphLines() {
         ctx.beginPath(); // drow Y
-        ctx.fillStyle = 'black';
+        ctx.fillStyle = night_mode ? colors.nightMode.text : colors.dayMode.text;
         ctx.font = '16px Arial Black';   
-        for(let i in this.computedData.y) {
-            ctx.fillText(this.computedData.y[i], 0, this.graphSize - this.graphSize / 5 * i - 10)
+        for(let i in computedData.yAxis) {
+            ctx.fillText(computedData.yAxis[i], 0, graphSize - graphSize / 5 * i - 10)
         } 
-        ctx.closePath();
 
-        ctx.beginPath(); // drow X
-        ctx.fillStyle = 'black';
-        ctx.font = '16px Arial Black'; 
-        for(let i = 0; i < this.computedData.x.length; i++) { 
-            ctx.fillText(getDate(this.computedData.x[i]), this.graphSize / this.computedData.x.length * i + 15, this.graphSize + 20);
+        for(let i = 0; i < computedData.xAxis.length; i++) { 
+            ctx.fillText(getDate(computedData.xAxis[i]), graphSize / computedData.xAxis.length * i + 15, graphSize + 20);
         }
         ctx.closePath();
 
-        for(let i in this.resp.lines) { // drow lines
-            if(!this.resp.lines[i].enabled) continue;
-            let pxlsPerPointY = this.computedData.maxY / this.graphSize ; // pxls on 1 point
-
+        for(let i in resp.lines) { // drow lines
+            if(!resp.lines[i].enabled) continue;
+            let pxlsPerPointY = graphSize / computedData.maxY,
+                pxlsPerPointX = graphSize / resp.x.columnComputed.length; // pxls on 1 point
+            
             ctx.beginPath(); 
-            ctx.strokeStyle = this.resp.lines[i].color;
-            ctx.moveTo(0, this.graphSize - pxlsPerPointY * this.resp.lines[i].column[0]) 
-            for(let j = 1; j <= this.computedData.x.length; j++) {
+            ctx.strokeStyle = resp.lines[i].color;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round'
+            ctx.moveTo(0, graphSize - pxlsPerPointY * resp.lines[i].columnComputed[0]) 
+            for(let j = 1; j < resp.lines[i].columnComputed.length; j++) {
                 ctx.lineTo(
-                    this.graphSize / this.computedData.x.length * j,
-                    this.graphSize - this.graphSize / this.computedData.maxY * j
+                    pxlsPerPointX * j,
+                    graphSize - pxlsPerPointY * resp.lines[i].columnComputed[j]
                 )
-                // console.log(
-                //     this.graphSize / this.computedData.x.length * j,
-                //     this.graphSize - pxlsPerPointY * this.resp.lines[i].column[j]
-                // )
             }
             ctx.stroke();
             ctx.closePath();
@@ -205,24 +246,69 @@ function CreateChart(id, data) {
 
     }
 
-    this.calculate();
-    this.drow = function() {
-        requestAnimationFrame(this.drow.bind(this))
+    function drow() {
+        requestAnimationFrame(drow)
         ctx.clearRect(0, 0, cvs.width, cvs.height);
-        this.drowStaticLines();
-        this.drowGraphLines();
-        this.drowControlPanel();
-        // this.drowControlPanel();
+        calculate();
+        drowStaticLines();
+        drowGraphLines();
+        drowControlPanel();
     }
 
-    this.drow();
+    drow();
 
+    // EVENTS
 
-    this.addBtnEvent = function(el) {
-        el.addEventListener('click', this.calculate.bind(this))
+    function cpIsHover() {
+        return pos.x >= cntrPanel.x && pos.x <= cntrPanel.x + cntrPanel.w && pos.y >= cntrPanel.y && pos.y <= cntrPanel.y + cntrPanel.h ? true : false
+    }
+    
+    function cpIsResizingLeft() {
+        return pos.x <= cntrPanel.x + 6 && pos.x >= cntrPanel.x - 6 && pos.y >= cntrPanel.y && pos.y <= cntrPanel.y + cntrPanel.h ? true : false
+    }
+    
+    function cpIsResizingRight() {
+        return pos.x <= cntrPanel.x + cntrPanel.w + 6 && pos.x >= cntrPanel.x + cntrPanel.w - 6 && pos.y >= cntrPanel.y && pos.y <= cntrPanel.y + cntrPanel.h ? true : false
     }
 
-    Array.prototype.forEach.call(doc.getElementsByClassName('btn'), this.addBtnEvent.bind(this))
+    cvs.onmousemove = function(e) {
+        pos.x = e.pageX - this.offsetLeft;
+        pos.y = e.pageY - this.offsetTop;
+        if(cntrPanel.selected) {
+          if(pos.x >= graphSize - cntrPanel.w / 2) return cntrPanel.x = graphSize - cntrPanel.w;
+          if(pos.x <= cntrPanel.w / 2) return cntrPanel.x = 0;
+          cntrPanel.x = pos.x - cntrPanel.w / 2;
+        } else if(cntrPanel.resizingLeft) {
+          cntrPanel.w += graphSize - cntrPanel.w - bgPanel2.w - pos.x;
+          cntrPanel.x = pos.x;
+        } else if(cntrPanel.resizingRight) {
+          cntrPanel.w += graphSize - cntrPanel.x - cntrPanel.w - (graphSize - pos.x);
+        }
+        
+        bgPanel1.w = cntrPanel.x;
+        bgPanel2.x = cntrPanel.x + cntrPanel.w;
+        bgPanel2.w = graphSize - (bgPanel1.w + cntrPanel.w);
+         
+      }
+
+    cvs.onmousedown = function(e) {
+        if(cpIsResizingLeft()) return cntrPanel.resizingLeft = true;
+        if(cpIsResizingRight()) return cntrPanel.resizingRight = true;
+        if(cpIsHover()) return cntrPanel.selected = true;
+    }
+    cvs.onmouseup = function(e) {
+        cntrPanel.selected = false;
+        cntrPanel.resizingLeft = false;
+        cntrPanel.resizingRight = false;
+    }
+    
+    cvs.onmouseout = function(e) {
+        cntrPanel.selected = false;
+        cntrPanel.resizingLeft = false;
+        cntrPanel.resizingRight = false;
+    }
+
+    
 
 
 }
@@ -235,8 +321,7 @@ document.addEventListener("DOMContentLoaded", ready);
 
 function ready() {
     for(let i = 0; i < json.length; i++) {
-        new CreateChart('canvas' + ++i, json[i]);
-        return;
+        new CreateChart(json[i]);
     }
 }
 
