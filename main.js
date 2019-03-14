@@ -155,9 +155,7 @@ function CreateChart(data) {
         mainBlock.appendChild(btn);
         btn.addEventListener('click', () => {
             resp.lines[el].enabled = !resp.lines[el].enabled;
-            calculate();
         })
-        createRect(0, graphSize + 50, graphSize, 70, 'rgba(0, 0, 0, 0)');
     }
     mainBlock.appendChild(btnSwitchMode);
     body.appendChild(mainBlock)
