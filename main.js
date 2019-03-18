@@ -43,6 +43,8 @@ function CreateChart(data) {
         xAxis: [],
         yAxis: [],
         maxY: 0,
+        x: [],
+        y: [],
     }
     // CONTROL PANEL
 
@@ -118,11 +120,12 @@ function CreateChart(data) {
     }
     //////////////////////////
 
-    let resp = {x: {}, lines: {}};
+    let resp = {x: {}, lines: {}}, xStep = 0;
     for(let key in data.columns) {
         if(data.columns[key][0] === 'x') {
             resp.x.column = data.columns[key].slice(1,);
             resp.x.columnComputed = [];
+            xStep = graphSize / resp.x.column.length;
         } else {
             let col = data.columns[key].slice(1,);
             resp.lines[data.columns[key][0]] = {};
@@ -189,7 +192,7 @@ function CreateChart(data) {
     }
 
     function calculate() {
-        let xAxis = [], yAxis = [], stepX, maxYList = [], maxTotalY = 0, 
+        let xAxis = [], yAxis = [], x = [], stepX, maxYList = [], maxTotalY = 0, 
             stepRange = cntrPanel.w * 100 / graphSize,
             stepStart = cntrPanel.x * 100 / graphSize;
 
@@ -204,20 +207,32 @@ function CreateChart(data) {
             maxYList.push(Math.max.apply(null, resp.lines[i].columnComputed))
         }
 
-        let pointStart = resp.x.column.length * stepStart * 0.01,
-            pointRange = resp.x.column.length * stepRange * 0.01;
-        resp.x.columnComputed = resp.x.column.slice(pointStart, pointStart + pointRange); // create Computed X
+        // let pointStart = resp.x.column.length * stepStart * 0.01,
+        //     pointRange = resp.x.column.length * stepRange * 0.01;
+        // resp.x.columnComputed = resp.x.column.slice(pointStart, pointStart + pointRange); // create Computed X
+
+        let zoom = cntrPanel.w / graphSize;
+        let st = 1 / zoom // per x point in resp.x.column;
+
+        for(let i = 0; i < resp.x.column.length; i += st) {
+            x.push(resp.x.column[i])
+        }
+        
+        // console.log(x.length * zoom)
+
+
 
         maxTotalY = Math.max.apply(null, maxYList);
         for(let i = 0; i < maxTotalY; i += maxTotalY / 5) yAxis.push(Math.round(i));
 
         
-        stepX = Math.round(resp.x.columnComputed.length / 6);
-        for(let i = 0; i < resp.x.columnComputed.length; i += stepX) xAxis.push(resp.x.columnComputed[i]);
+        // stepX = Math.round(resp.x.columnComputed.length / 6);
+        // for(let i = 0; i < resp.x.columnComputed.length; i += stepX) xAxis.push(resp.x.columnComputed[i]);
 
         computedData.maxY = maxTotalY;
         computedData.yAxis = yAxis;
         computedData.xAxis = xAxis;
+        computedData.x = x;
     }
 
     function drowGraphLines() {
@@ -228,8 +243,12 @@ function CreateChart(data) {
             ctx.fillText(computedData.yAxis[i], 0, graphSize - graphSize / 5 * i - 10)
         } 
 
-        for(let i = 0; i < computedData.xAxis.length; i++) { 
-            ctx.fillText(getDate(computedData.xAxis[i]), graphSize / computedData.xAxis.length * i + 15, graphSize + 20);
+        let ii = resp.x.column.indexOf(computedData.xAxis[0]);
+        let firstPos = ((ii + 1) % 6) * xStep;
+        let anotherSteps = graphSize / 6 ;
+        ctx.fillText(getDate(computedData.xAxis[0]), firstPos, graphSize + 20);
+        for(let i = 1; i < computedData.xAxis.length; i++) { 
+            ctx.fillText(getDate(computedData.xAxis[i]), firstPos + anotherSteps * i, graphSize + 20);
         }
         ctx.closePath();
 
@@ -320,9 +339,10 @@ function CreateChart(data) {
     }
 
 
+    let l = cvs.offsetLeft, t = cvs.offsetTop;
     cvs.onmousemove = function(e) {
-        pos.x = e.pageX - this.offsetLeft;
-        pos.y = e.pageY - this.offsetTop;
+        pos.x = e.pageX - l;
+        pos.y = e.pageY - t;
         if(cntrPanel.selected) {
           if(pos.x >= graphSize - cntrPanel.w / 2) return cntrPanel.x = graphSize - cntrPanel.w;
           if(pos.x <= cntrPanel.w / 2) return cntrPanel.x = 0;
