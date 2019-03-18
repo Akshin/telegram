@@ -60,10 +60,10 @@ div.btn em {
     height: 30px;
     margin-right: 12px;
     line-height: 30px;
-    background: #e1ecf1;
     border-radius: 50%;
     text-align: center;
-    color: red;
+    color: #fff;
+    transition: all .2s ease;
 } 
 div.btn {
     margin-right: 20px;
@@ -94,3 +94,6 @@ a:hover {
 .night_mode .btn {
     color: #fff;
 }
+/* .night_mode .btn em {
+    color: #242f3e;
+} */

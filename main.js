@@ -30,7 +30,7 @@ function getDate(date) {
 }
 
 
-function CreateChart(data) {
+function CreateChart(data) {    
     let mainBlock = doc.createElement('div'),
         title = doc.createElement('h1'),
         btnSwitchMode = doc.createElement('a'),
@@ -47,8 +47,9 @@ function CreateChart(data) {
     // CONTROL PANEL
 
     let pos = {
-        x: graphSize - graphSize / 4,
-        w: graphSize / 4,
+        x: 0,
+        y: 0,
+        w: 0,
         h: 60,
       },
       cntrPanel = {
@@ -149,11 +150,19 @@ function CreateChart(data) {
         let btn = doc.createElement('div'),
             em = doc.createElement('em');
         em.innerHTML = '&#10004;';
+        em.style.boxShadow = 'inset 0px 0px 0px 20px ' + resp.lines[el].color;
         btn.innerText = resp.lines[el].name;
         btn.insertBefore(em, btn.firstChild);
         btn.className = 'btn';
         mainBlock.appendChild(btn);
         btn.addEventListener('click', () => {
+            if(!resp.lines[el].enabled) {
+                em.style.boxShadow = 'inset 0px 0px 0px 20px ' + resp.lines[el].color;
+                em.style.color = 'rgba(250, 250, 250, 1)';
+            } else {
+                em.style.boxShadow = 'inset 0px 0px 0px 3px ' + resp.lines[el].color; 
+                em.style.color = 'rgba(250, 250, 250, 0)';
+            }
             resp.lines[el].enabled = !resp.lines[el].enabled;
         })
     }
@@ -192,15 +201,15 @@ function CreateChart(data) {
         };
         for(let i in resp.lines) {
             if(!resp.lines[i].enabled) continue;
-            maxYList.push(Math.round(Math.max.apply(null, resp.lines[i].columnComputed)))
+            maxYList.push(Math.max.apply(null, resp.lines[i].columnComputed))
         }
 
         let pointStart = resp.x.column.length * stepStart * 0.01,
             pointRange = resp.x.column.length * stepRange * 0.01;
         resp.x.columnComputed = resp.x.column.slice(pointStart, pointStart + pointRange); // create Computed X
 
-        maxTotalY = Math.round(Math.max.apply(null, maxYList));
-        for(let i = 0; i < maxTotalY; i += Math.round(maxTotalY / 5)) yAxis.push(i);
+        maxTotalY = Math.max.apply(null, maxYList);
+        for(let i = 0; i < maxTotalY; i += maxTotalY / 5) yAxis.push(Math.round(i));
 
         
         stepX = Math.round(resp.x.columnComputed.length / 6);
@@ -227,16 +236,15 @@ function CreateChart(data) {
         for(let i in resp.lines) { // drow lines
             if(!resp.lines[i].enabled) continue;
             let pxlsPerPointY = graphSize / computedData.maxY,
-                pxlsPerPointX = graphSize / resp.x.columnComputed.length; // pxls on 1 point
+                pxlsPerPointX = graphSize / resp.lines[i].columnComputed.length; // pxls on 1 point
             
             ctx.beginPath(); 
             ctx.strokeStyle = resp.lines[i].color;
             ctx.lineWidth = 3;
-            ctx.lineCap = 'round'
-            ctx.moveTo(0, graphSize - pxlsPerPointY * resp.lines[i].columnComputed[0]) 
+            ctx.moveTo(0, graphSize - pxlsPerPointY * resp.lines[i].columnComputed[0])
             for(let j = 1; j < resp.lines[i].columnComputed.length; j++) {
                 ctx.lineTo(
-                    pxlsPerPointX * j,
+                    pxlsPerPointX * (j + 1),
                     graphSize - pxlsPerPointY * resp.lines[i].columnComputed[j]
                 )
             }
@@ -249,6 +257,7 @@ function CreateChart(data) {
             if(!resp.lines[i].enabled) continue;
             cpMaxYList.push(resp.lines[i].maxY);
         }
+        
         cpMaxY = Math.max.apply(null, cpMaxYList);
         for(let i in resp.lines) {
             if(!resp.lines[i].enabled) continue;
@@ -258,33 +267,17 @@ function CreateChart(data) {
             ctx.beginPath(); 
             ctx.strokeStyle = resp.lines[i].color;
             ctx.lineWidth = 2;
-            ctx.lineCap = 'round'
             ctx.moveTo(0, graphSize + 110 - pxlsPerPointY * resp.lines[i].column[0]) 
             for(let j = 1; j < resp.lines[i].column.length; j++) {
                 ctx.lineTo(
-                    pxlsPerPointX * j,
+                    pxlsPerPointX * (j + 1),
                     graphSize + 110 - pxlsPerPointY * resp.lines[i].column[j]
                 )
             }
             ctx.stroke();
             ctx.closePath();
         }
-
-
-
-
     }
-
-    function drow() {
-        requestAnimationFrame(drow)
-        ctx.clearRect(0, 0, cvs.width, cvs.height);
-        calculate();
-        drowStaticLines();
-        drowGraphLines();
-        drowControlPanel();
-    }
-
-    drow();
 
     // EVENTS
 
@@ -300,6 +293,33 @@ function CreateChart(data) {
         return pos.x <= cntrPanel.x + cntrPanel.w + 6 && pos.x >= cntrPanel.x + cntrPanel.w - 6 && pos.y >= cntrPanel.y && pos.y <= cntrPanel.y + cntrPanel.h ? true : false
     }
 
+    let counter = 0, fadingOut = false, xPos;
+    let drowCursorEvents = function() {
+        if(!cntrPanel.selected && !fadingOut && !cntrPanel.resizingLeft && !cntrPanel.resizingRight) return;
+        let r, y = cntrPanel.y + 30;
+        if(!fadingOut) {
+            r = counter <= 40 ? counter += 5 : counter;
+        } else {
+            r = counter > 0 ? counter -= 5 : counter = 0;
+            if(r === 0) fadingOut = false;
+        }
+        
+        if(cntrPanel.selected) {
+            xPos = cntrPanel.x + cntrPanel.w / 2;
+        } else if(cntrPanel.resizingLeft) {
+            xPos = cntrPanel.x;
+        } else if(cntrPanel.resizingRight){
+            xPos = cntrPanel.x + cntrPanel.w;
+        }
+        ctx.beginPath();
+        ctx.strokeStyle = 'e1ecf1';
+        ctx.arc(xPos, y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+    }
+
+
     cvs.onmousemove = function(e) {
         pos.x = e.pageX - this.offsetLeft;
         pos.y = e.pageY - this.offsetTop;
@@ -307,6 +327,7 @@ function CreateChart(data) {
           if(pos.x >= graphSize - cntrPanel.w / 2) return cntrPanel.x = graphSize - cntrPanel.w;
           if(pos.x <= cntrPanel.w / 2) return cntrPanel.x = 0;
           cntrPanel.x = pos.x - cntrPanel.w / 2;
+
         } else if(cntrPanel.resizingLeft) {
           cntrPanel.w += graphSize - cntrPanel.w - bgPanel2.w - pos.x;
           cntrPanel.x = pos.x;
@@ -329,16 +350,27 @@ function CreateChart(data) {
         cntrPanel.selected = false;
         cntrPanel.resizingLeft = false;
         cntrPanel.resizingRight = false;
+        fadingOut = true;
     }
     
     cvs.onmouseout = function(e) {
         cntrPanel.selected = false;
         cntrPanel.resizingLeft = false;
         cntrPanel.resizingRight = false;
+        fadingOut = true;
+    }
+    
+    let drow = function () {
+        requestAnimationFrame(drow)
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+        calculate();
+        drowStaticLines();
+        drowGraphLines();
+        drowControlPanel();
+        drowCursorEvents();
     }
 
-    
-
+    drow();
 
 }
 
