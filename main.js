@@ -36,45 +36,44 @@ function CreateChart(data) {
         btnSwitchMode = doc.createElement('a'),
         cvs = doc.createElement('canvas'),
         ctx = cvs.getContext('2d'),
-        night_mode = false;
+        night_mode = false,
+        graphSize = cvsWidth,
+        linesLength = 0,
+        computedData = {
+            xFullSteped: [],
+            xAxis: [],
+            firstPos: 0,
 
-    let graphSize = cvsWidth,
-    computedData = {
-        xAxis: [],
-        yAxis: [],
-        maxY: 0,
-        x: [],
-        y: [],
-    }
-    // CONTROL PANEL
-
-    let pos = {
-        x: 0,
-        y: 0,
-        w: 0,
-        h: 60,
-      },
-      cntrPanel = {
-        x: graphSize - graphSize / 4,
-        y: graphSize + 50,
-        w: graphSize / 4,
-        h: 60,
-        selected: false,
-        resizingLeft: false,
-        resizingRight: false,
-      },
-      bgPanel1 = {
-        x: 0,
-        y: graphSize + 50,
-        w: graphSize - graphSize / 4,
-        h: 60,
-      },
-      bgPanel2 = {
-        x: graphSize,
-        y: graphSize + 50,
-        w: 0,
-        h: 60,
-      }
+            yAxis: [],
+            maxY: 0,
+        },
+        pos = {
+            x: 0,
+            y: 0,
+            w: 0,
+            h: 60,
+        },
+        cntrPanel = {
+            x: graphSize - graphSize / 4,
+            y: graphSize + 50,
+            w: graphSize / 4,
+            h: 60,
+            selected: false,
+            resizingLeft: false,
+            resizingRight: false,
+        },
+        bgPanel1 = {
+            x: 0,
+            y: graphSize + 50,
+            w: graphSize - graphSize / 4,
+            h: 60,
+        },
+        bgPanel2 = {
+            x: graphSize,
+            y: graphSize + 50,
+            w: 0,
+            h: 60,
+        };
 
       function createRect(x, y, w, h, fillStyle, isMainBlock) {
         if(isMainBlock) {
@@ -120,19 +119,19 @@ function CreateChart(data) {
     }
     //////////////////////////
 
-    let resp = {x: {}, lines: {}}, xStep = 0;
+    let resp = {x: {}, lines: {}};
     for(let key in data.columns) {
         if(data.columns[key][0] === 'x') {
             resp.x.column = data.columns[key].slice(1,);
             resp.x.columnComputed = [];
-            xStep = graphSize / resp.x.column.length;
+            linesLength = resp.x.column.length;
         } else {
             let col = data.columns[key].slice(1,);
             resp.lines[data.columns[key][0]] = {};
             resp.lines[data.columns[key][0]].column = col;
-            resp.lines[data.columns[key][0]].columnComputed = [];
             resp.lines[data.columns[key][0]].enabled = true;
             resp.lines[data.columns[key][0]].maxY = Math.max.apply(null, col);
+            resp.lines[data.columns[key][0]].columnComputed = [];
             
         }
     }
@@ -192,50 +191,50 @@ function CreateChart(data) {
     }
 
     function calculate() {
-        let xAxis = [], yAxis = [], x = [], stepX, maxYList = [], maxTotalY = 0, 
-            stepRange = cntrPanel.w * 100 / graphSize,
-            stepStart = cntrPanel.x * 100 / graphSize;
+        // resp.x.column - все даты по дням
+        // resp.x.columnComputed - все даты по дням в промежутке
+        // computedData.fullXSteped - все даты разбитые на шаг, в зависимости от зума
+        // computedData.xAxis - даты, которые отображаются
+        let xPerDay = [], xFullSteped = [], xAxis = [], 
+            yAxis = [], maxYList = [], maxTotalY = 0, 
+            stepStart = cntrPanel.x / graphSize,
+            stepRange = cntrPanel.w / graphSize,
+            pointStart = linesLength * stepStart,
+            pointRange = linesLength * stepRange,
+            st = Math.round(linesLength / (6 / stepRange)); // per x point in resp.x.column;
 
-        for(let i in resp.lines) { 
+        // create Computed Y and max Y
+        for(let i in resp.lines) {  
             if(!resp.lines[i].enabled) continue;
-            let pointStart = resp.lines[i].column.length * stepStart * 0.01,
-                pointRange = resp.lines[i].column.length * stepRange * 0.01;
-            resp.lines[i].columnComputed = resp.lines[i].column.slice(pointStart, pointStart + pointRange); // create Computed Y
-        };
-        for(let i in resp.lines) {
-            if(!resp.lines[i].enabled) continue;
+            resp.lines[i].columnComputed = resp.lines[i].column.slice(pointStart, pointStart + pointRange);
             maxYList.push(Math.max.apply(null, resp.lines[i].columnComputed))
-        }
-
-        // let pointStart = resp.x.column.length * stepStart * 0.01,
-        //     pointRange = resp.x.column.length * stepRange * 0.01;
-        // resp.x.columnComputed = resp.x.column.slice(pointStart, pointStart + pointRange); // create Computed X
-
-        let zoom = cntrPanel.w / graphSize;
-        let st = 1 / zoom // per x point in resp.x.column;
-
-        for(let i = 0; i < resp.x.column.length; i += st) {
-            x.push(resp.x.column[i])
-        }
-        
-        // console.log(x.length * zoom)
-
-
+        };
 
         maxTotalY = Math.max.apply(null, maxYList);
         for(let i = 0; i < maxTotalY; i += maxTotalY / 5) yAxis.push(Math.round(i));
 
-        
-        // stepX = Math.round(resp.x.columnComputed.length / 6);
-        // for(let i = 0; i < resp.x.columnComputed.length; i += stepX) xAxis.push(resp.x.columnComputed[i]);
+        // create Computed X
+        resp.x.columnComputed = resp.x.column.slice(pointStart, pointStart + pointRange);
+        for(let i = 0; i < resp.x.column.length; i += st) { // диапозон дат по всеми временному промежутку
+            if(i + st > resp.x.column.length) {
+                xFullSteped.push(resp.x.column[resp.x.column.length - 1])
+            } else xFullSteped.push(resp.x.column[i])
+        }
 
-        computedData.maxY = maxTotalY;
-        computedData.yAxis = yAxis;
+        xAxis = xFullSteped.slice(Math.round(xFullSteped.length * stepStart), Math.round(xFullSteped.length * stepStart + pointRange));
+        computedData.firstPos = (resp.x.columnComputed.indexOf(xAxis[0]) % 6) * (graphSize / xFullSteped.length);
+
         computedData.xAxis = xAxis;
-        computedData.x = x;
+        computedData.xFullSteped = xFullSteped;
+        computedData.yAxis = yAxis;
+        computedData.maxY = maxTotalY;
+
+        console.log(computedData)
+
     }
 
     function drowGraphLines() {
+
         ctx.beginPath(); // drow Y
         ctx.fillStyle = night_mode ? colors.nightMode.text : colors.dayMode.text;
         ctx.font = '16px Arial Black';   
@@ -243,12 +242,9 @@ function CreateChart(data) {
             ctx.fillText(computedData.yAxis[i], 0, graphSize - graphSize / 5 * i - 10)
         } 
 
-        let ii = resp.x.column.indexOf(computedData.xAxis[0]);
-        let firstPos = ((ii + 1) % 6) * xStep;
-        let anotherSteps = graphSize / 6 ;
-        ctx.fillText(getDate(computedData.xAxis[0]), firstPos, graphSize + 20);
+        ctx.fillText(getDate(computedData.xAxis[0]), computedData.firstPos, graphSize + 20);
         for(let i = 1; i < computedData.xAxis.length; i++) { 
-            ctx.fillText(getDate(computedData.xAxis[i]), firstPos + anotherSteps * i, graphSize + 20);
+            ctx.fillText(getDate(computedData.xAxis[i]), computedData.firstPos + i * (graphSize / 6), graphSize + 20);
         }
         ctx.closePath();
 
