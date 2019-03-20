@@ -3,6 +3,7 @@ const json = [{"columns":[["x",1542412800000,1542499200000,1542585600000,1542672
 
 const doc = document,
     months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov', 'Dec'],
+    days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     body = doc.getElementsByTagName('body')[0],
     cvsWidth = 500,
     cvsHeght = 650,
@@ -10,11 +11,12 @@ const doc = document,
         gray: '#e1e1e1',
         dayMode: {
             bg: '#fff',
-            text: '#879196'
+            text: '#879196',
+            textInfo: 'black'
         },
         nightMode: {
             bg: '#242f3e',
-            text: '#fff'
+            text: '#fff',
         }
     };
 
@@ -23,14 +25,16 @@ function getDiff(timestamp1, timestamp2) {
     return Math.abs(Math.floor(difference/1000/60/60/24));
 }
 
-function getDate(date) {
+function getDate(date, forInfo = false) {
     let d = new Date();
     d.setTime(date);
-    return months[d.getMonth()] + ' ' + d.getDate();
+
+    let dd = forInfo ? days[d.getDay()] + ', ' : '' 
+    return dd + months[d.getMonth()] + ' ' + d.getDate()
 }
 
 
-function CreateChart(data) {    
+function CreateChart(data, name) {    
     let mainBlock = doc.createElement('div'),
         title = doc.createElement('h1'),
         btnSwitchMode = doc.createElement('a'),
@@ -73,7 +77,13 @@ function CreateChart(data) {
             y: graphSize + 50,
             w: 0,
             h: 60,
-        };
+        },
+        infoPanel = {
+            x: 0,
+            w: graphSize / 4,
+            h: 80,
+            lines: [],
+        }
 
       function createRect(x, y, w, h, fillStyle, isMainBlock) {
         if(isMainBlock) {
@@ -140,7 +150,7 @@ function CreateChart(data) {
     console.log(resp)
 
     mainBlock.className = 'main_block day_mode';
-    title.innerText = 'Followers';
+    title.innerText = name;
     btnSwitchMode.innerText = 'Switch to Night Mode';
     btnSwitchMode.addEventListener('click', function() {mainBlock.classList.toggle('night_mode'); night_mode = !night_mode})
     cvs.width = cvsWidth;
@@ -176,6 +186,39 @@ function CreateChart(data) {
         createRect(cntrPanel.x, cntrPanel.y, cntrPanel.w, cntrPanel.h, 'rgba(0, 0, 0, 0)', true);
         createRect(bgPanel1.x, bgPanel1.y, bgPanel1.w, bgPanel1.h, 'rgba(136, 179, 200, 0.3)');
         createRect(bgPanel2.x, bgPanel2.y, bgPanel2.w, bgPanel2.h, 'rgba(136, 179, 200, 0.3)');
+    }
+
+    function drowGraphInfo() {
+        if(pos.y <= graphSize) {
+            let bg = night_mode ? colors.nightMode.bg : colors.dayMode.bg,
+            text = night_mode ? colors.nightMode.text : colors.dayMode.textInfo,
+            shadow = night_mode ? 'black' : colors.gray
+
+            ctx.beginPath();
+            ctx.strokeStyle = colors.gray;
+            ctx.lineWidth = 2;
+            ctx.moveTo(pos.x, 0);
+            ctx.lineTo(pos.x, graphSize);
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.beginPath();
+            ctx.fillStyle = bg;
+            ctx.shadowColor = shadow;
+            ctx.shadowBlur = 4;
+            ctx.fillRect(infoPanel.x, 5, infoPanel.w, infoPanel.h);
+            ctx.closePath();
+            ctx.shadowBlur = 0;
+
+            ctx.beginPath();
+            ctx.fillStyle = text;
+            ctx.font = "20px Arial";
+            ctx.textBaseline = "top";
+            ctx.fillText(getDate(1549670400000, true), infoPanel.x, 10);
+            ctx.closePath();
+
+
+        }
     }
 
     function drowStaticLines() {
@@ -228,8 +271,6 @@ function CreateChart(data) {
         computedData.xFullSteped = xFullSteped;
         computedData.yAxis = yAxis;
         computedData.maxY = maxTotalY;
-
-        console.log(computedData)
 
     }
 
@@ -343,7 +384,6 @@ function CreateChart(data) {
           if(pos.x >= graphSize - cntrPanel.w / 2) return cntrPanel.x = graphSize - cntrPanel.w;
           if(pos.x <= cntrPanel.w / 2) return cntrPanel.x = 0;
           cntrPanel.x = pos.x - cntrPanel.w / 2;
-
         } else if(cntrPanel.resizingLeft) {
           cntrPanel.w += graphSize - cntrPanel.w - bgPanel2.w - pos.x;
           cntrPanel.x = pos.x;
@@ -384,6 +424,7 @@ function CreateChart(data) {
         drowGraphLines();
         drowControlPanel();
         drowCursorEvents();
+        drowGraphInfo()
     }
 
     drow();
@@ -398,7 +439,7 @@ document.addEventListener("DOMContentLoaded", ready);
 
 function ready() {
     for(let i = 0; i < json.length; i++) {
-        return new CreateChart(json[i]);
+        return new CreateChart(json[i], 'Chart ' + (i + 1));
     }
 }
 
