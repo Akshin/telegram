@@ -80,9 +80,12 @@ function CreateChart(data, name) {
         },
         infoPanel = {
             x: 0,
+            y: 5,
             w: graphSize / 4,
             h: 80,
             lines: [],
+            bigSize: false,
+            enabled: false
         }
 
       function createRect(x, y, w, h, fillStyle, isMainBlock) {
@@ -189,41 +192,91 @@ function CreateChart(data, name) {
     }
 
     function drowGraphInfo() {
-        if(pos.y <= graphSize) {
-            let bg = night_mode ? colors.nightMode.bg : colors.dayMode.bg,
-            text = night_mode ? colors.nightMode.text : colors.dayMode.textInfo,
-            shadow = night_mode ? 'black' : colors.gray
+        if(!infoPanel.enabled) return;
+        if(infoPanel.lines.length > 2) infoPanel.h = 140;
+        let bg = night_mode ? colors.nightMode.bg : colors.dayMode.bg,
+        text = night_mode ? colors.nightMode.text : colors.dayMode.textInfo,
+        shadow = night_mode ? 'black' : colors.gray,
+        index = Math.floor(pos.x / (graphSize / resp.x.columnComputed.length)),
+        posX = index * (graphSize / resp.x.columnComputed.length);
 
-            ctx.beginPath();
-            ctx.strokeStyle = colors.gray;
-            ctx.lineWidth = 2;
-            ctx.moveTo(pos.x, 0);
-            ctx.lineTo(pos.x, graphSize);
-            ctx.stroke();
-            ctx.closePath();
+        ctx.beginPath();
+        ctx.textAlign = "center";
+        ctx.strokeStyle = colors.gray;
+        ctx.lineWidth = 2;
+        ctx.moveTo(posX, 0);
+        ctx.lineTo(posX, graphSize);
+        ctx.stroke();
+        ctx.closePath();
 
+        ctx.beginPath();
+        ctx.fillStyle = bg;
+        ctx.shadowColor = shadow;
+        ctx.shadowBlur = 4;
+        ctx.fillRect(infoPanel.x, infoPanel.y, infoPanel.w, infoPanel.h);
+        ctx.closePath();
+        ctx.shadowBlur = 0;
+
+        ctx.beginPath();
+        ctx.fillStyle = text;
+        ctx.font = "20px Arial";
+        ctx.textBaseline = "top";
+        ctx.fillText(getDate(resp.x.columnComputed[index], true), infoPanel.x + infoPanel.w / 2, 10);
+        ctx.closePath();
+
+        for(let i = 0; i < infoPanel.lines.length; i++) {
             ctx.beginPath();
             ctx.fillStyle = bg;
-            ctx.shadowColor = shadow;
-            ctx.shadowBlur = 4;
-            ctx.fillRect(infoPanel.x, 5, infoPanel.w, infoPanel.h);
+            ctx.strokeStyle = infoPanel.lines[i].color;
+            ctx.arc(posX, graphSize - (graphSize / computedData.maxY) * infoPanel.lines[i].columnComputed[index], 7, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
             ctx.closePath();
-            ctx.shadowBlur = 0;
+            
+            ctx.beginPath();
+            ctx.fillStyle = infoPanel.lines[i].color;
+            ctx.font = "22px Arial";
+            if(!infoPanel.bigSize) {
+                ctx.textAlign="center"; 
+                ctx.fillText(
+                    infoPanel.lines[i].columnComputed[index], 
+                    infoPanel.x + infoPanel.w / (infoPanel.lines.length * 2) + i * infoPanel.w / infoPanel.lines.length, 
+                    infoPanel.y + 30
+                );
+            } else {
+                ctx.textAlign="end"; 
+                ctx.fillText(
+                    infoPanel.lines[i].columnComputed[index], 
+                    infoPanel.x + infoPanel.w, 
+                    infoPanel.y + 30 * (i + 1)
+                );
+            }
+            ctx.closePath();
 
             ctx.beginPath();
-            ctx.fillStyle = text;
-            ctx.font = "20px Arial";
-            ctx.textBaseline = "top";
-            ctx.fillText(getDate(1549670400000, true), infoPanel.x, 10);
+            ctx.font = "19px Arial";
+            if(!infoPanel.bigSize) {
+                ctx.textAlign="center"; 
+                ctx.fillText(infoPanel.lines[i].name, infoPanel.x + infoPanel.w / (infoPanel.lines.length * 2) + i * infoPanel.w / infoPanel.lines.length, infoPanel.y + 56);
+            } else {
+                ctx.textAlign="center"; 
+                ctx.fillText(
+                    infoPanel.lines[i].name, 
+                    infoPanel.x + 15, 
+                    infoPanel.y + 30 * (i + 1)
+                );
+            }
             ctx.closePath();
-
-
         }
+
+
     }
 
     function drowStaticLines() {
         ctx.beginPath(); // drow y lines
         ctx.strokeStyle = colors.gray;
+        ctx.textBaseline = "alphabetic";
+        ctx.textAlign = "left";
         ctx.lineWidth = 1;
         for(let i = 0; i < 5; i++) {
             ctx.moveTo(0, graphSize - graphSize / 5 * i);
@@ -246,10 +299,13 @@ function CreateChart(data, name) {
             pointRange = linesLength * stepRange,
             st = Math.round(linesLength / (6 / stepRange)); // per x point in resp.x.column;
 
+        infoPanel.lines = [];
+
         // create Computed Y and max Y
         for(let i in resp.lines) {  
             if(!resp.lines[i].enabled) continue;
             resp.lines[i].columnComputed = resp.lines[i].column.slice(pointStart, pointStart + pointRange);
+            infoPanel.lines.push(resp.lines[i]);
             maxYList.push(Math.max.apply(null, resp.lines[i].columnComputed))
         };
 
@@ -272,6 +328,22 @@ function CreateChart(data, name) {
         computedData.yAxis = yAxis;
         computedData.maxY = maxTotalY;
 
+        // infoPanel 
+        infoPanel.bigSize = computedData.maxY > 99999 || infoPanel.lines.length > 2 ? true : false;
+        infoPanel.h = infoPanel.bigSize ? infoPanel.lines.length * 45 : 80;
+        if(infoPanel.h < 80) infoPanel.h = 80;
+
+        if(pos.x < 20) infoPanel.x = pos.x
+        else if(pos.x > graphSize - infoPanel.w) infoPanel.x = graphSize - infoPanel.w
+        else infoPanel.x = pos.x - 40;
+        
+
+
+
+        // graphSize / resp.x.columnComputed.length
+
+
+
     }
 
     function drowGraphLines() {
@@ -284,6 +356,7 @@ function CreateChart(data, name) {
         } 
 
         ctx.fillText(getDate(computedData.xAxis[0]), computedData.firstPos, graphSize + 20);
+        ctx.beginPath();
         for(let i = 1; i < computedData.xAxis.length; i++) { 
             ctx.fillText(getDate(computedData.xAxis[i]), computedData.firstPos + i * (graphSize / 6), graphSize + 20);
         }
@@ -349,6 +422,10 @@ function CreateChart(data, name) {
         return pos.x <= cntrPanel.x + cntrPanel.w + 6 && pos.x >= cntrPanel.x + cntrPanel.w - 6 && pos.y >= cntrPanel.y && pos.y <= cntrPanel.y + cntrPanel.h ? true : false
     }
 
+    function graphHover() {
+        return pos.y <= graphSize && pos.x >= 0 && infoPanel.lines.length ? true : false
+    }
+
     let counter = 0, fadingOut = false, xPos;
     let drowCursorEvents = function() {
         if(!cntrPanel.selected && !fadingOut && !cntrPanel.resizingLeft && !cntrPanel.resizingRight) return;
@@ -380,6 +457,7 @@ function CreateChart(data, name) {
     cvs.onmousemove = function(e) {
         pos.x = e.pageX - l;
         pos.y = e.pageY - t;
+        infoPanel.enabled = graphHover();
         if(cntrPanel.selected) {
           if(pos.x >= graphSize - cntrPanel.w / 2) return cntrPanel.x = graphSize - cntrPanel.w;
           if(pos.x <= cntrPanel.w / 2) return cntrPanel.x = 0;
@@ -413,11 +491,15 @@ function CreateChart(data, name) {
         cntrPanel.selected = false;
         cntrPanel.resizingLeft = false;
         cntrPanel.resizingRight = false;
+        infoPanel.enabled = false;
         fadingOut = true;
     }
+
+    let requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
+        window.webkitRequestAnimationFrame || window.msRequestAnimationFrame,
+        cancelAnimationFrame = window.cancelAnimationFrame || window.mozCancelAnimationFrame;
     
     let drow = function () {
-        requestAnimationFrame(drow)
         ctx.clearRect(0, 0, cvs.width, cvs.height);
         calculate();
         drowStaticLines();
@@ -426,8 +508,25 @@ function CreateChart(data, name) {
         drowCursorEvents();
         drowGraphInfo()
     }
-
+    
     drow();
+
+
+    let reqId = undefined;
+    let go = function() {
+        reqId = requestAnimationFrame(go)
+        drow()
+    }
+
+    let stop = function() {
+        cancelAnimationFrame(reqId);
+        reqId = undefined;
+    }
+
+    go();
+    // stop();
+
+
 
 }
 
@@ -439,7 +538,7 @@ document.addEventListener("DOMContentLoaded", ready);
 
 function ready() {
     for(let i = 0; i < json.length; i++) {
-        return new CreateChart(json[i], 'Chart ' + (i + 1));
+        new CreateChart(json[i], 'Chart ' + (i + 1));
     }
 }
 
