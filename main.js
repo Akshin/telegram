@@ -18,19 +18,14 @@ const doc = document,
             bg: '#242f3e',
             text: '#fff',
         }
-    };
-
-function getDiff(timestamp1, timestamp2) {
-    let difference = timestamp1 - timestamp2;
-    return Math.abs(Math.floor(difference/1000/60/60/24));
-}
+    }
 
 function getDate(date, forInfo = false) {
     let d = new Date();
     d.setTime(date);
 
-    let dd = forInfo ? days[d.getDay()] + ', ' : '' 
-    return dd + months[d.getMonth()] + ' ' + d.getDate()
+    let dd = forInfo ? days[d.getDay()] + ', ' : '' ;
+    return dd + months[d.getMonth()] + ' ' + d.getDate();
 }
 
 
@@ -39,7 +34,9 @@ function CreateChart(data, name) {
         title = doc.createElement('h1'),
         btnSwitchMode = doc.createElement('a'),
         cvs = doc.createElement('canvas'),
+        cvs2 = doc.createElement('canvas'),
         ctx = cvs.getContext('2d'),
+        ctx2 = cvs2.getContext('2d'),
         night_mode = false,
         graphSize = cvsWidth,
         linesLength = 0,
@@ -50,6 +47,7 @@ function CreateChart(data, name) {
 
             yAxis: [],
             maxY: 0,
+            yAnimate: '',
         },
         pos = {
             x: 0,
@@ -150,17 +148,18 @@ function CreateChart(data, name) {
     }
     for(let key in data.names) resp.lines[key].name = data.names[key];
     for(let key in data.colors) resp.lines[key].color = data.colors[key];
-    console.log(resp)
 
     mainBlock.className = 'main_block day_mode';
     title.innerText = name;
     btnSwitchMode.innerText = 'Switch to Night Mode';
     btnSwitchMode.addEventListener('click', function() {mainBlock.classList.toggle('night_mode'); night_mode = !night_mode})
     cvs.width = cvsWidth;
+    cvs2.width = cvsWidth;
     cvs.height = cvsHeght;
+    cvs2.height = cvsHeght;
 
     mainBlock.appendChild(title);
-    mainBlock.appendChild(cvs);
+    mainBlock.appendChild(cvs2);
     for(let el in resp.lines) {
         let btn = doc.createElement('div'),
             em = doc.createElement('em');
@@ -179,6 +178,7 @@ function CreateChart(data, name) {
                 em.style.color = 'rgba(250, 250, 250, 0)';
             }
             resp.lines[el].enabled = !resp.lines[el].enabled;
+            drow()
         })
     }
     mainBlock.appendChild(btnSwitchMode);
@@ -198,7 +198,7 @@ function CreateChart(data, name) {
         text = night_mode ? colors.nightMode.text : colors.dayMode.textInfo,
         shadow = night_mode ? 'black' : colors.gray,
         index = Math.floor(pos.x / (graphSize / resp.x.columnComputed.length)),
-        posX = index * (graphSize / resp.x.columnComputed.length);
+        posX = (index + 1) * (graphSize / resp.x.columnComputed.length);
 
         ctx.beginPath();
         ctx.textAlign = "center";
@@ -287,11 +287,7 @@ function CreateChart(data, name) {
     }
 
     function calculate() {
-        // resp.x.column - все даты по дням
-        // resp.x.columnComputed - все даты по дням в промежутке
-        // computedData.fullXSteped - все даты разбитые на шаг, в зависимости от зума
-        // computedData.xAxis - даты, которые отображаются
-        let xPerDay = [], xFullSteped = [], xAxis = [], 
+        let xFullSteped = [], xAxis = [], 
             yAxis = [], maxYList = [], maxTotalY = 0, 
             stepStart = cntrPanel.x / graphSize,
             stepRange = cntrPanel.w / graphSize,
@@ -321,7 +317,7 @@ function CreateChart(data, name) {
         }
 
         xAxis = xFullSteped.slice(Math.round(xFullSteped.length * stepStart), Math.round(xFullSteped.length * stepStart + pointRange));
-        computedData.firstPos = (resp.x.columnComputed.indexOf(xAxis[0]) % 6) * (graphSize / xFullSteped.length);
+        computedData.firstPos = (resp.x.columnComputed.indexOf(xAxis[0]) % 6) * (graphSize / xFullSteped.length );
 
         computedData.xAxis = xAxis;
         computedData.xFullSteped = xFullSteped;
@@ -345,15 +341,18 @@ function CreateChart(data, name) {
 
 
     }
-
     function drowGraphLines() {
 
         ctx.beginPath(); // drow Y
         ctx.fillStyle = night_mode ? colors.nightMode.text : colors.dayMode.text;
-        ctx.font = '16px Arial Black';   
+        ctx.font = '16px Arial Black';  
+        ctx.save();
+
         for(let i in computedData.yAxis) {
             ctx.fillText(computedData.yAxis[i], 0, graphSize - graphSize / 5 * i - 10)
         } 
+
+        ctx.restore();
 
         ctx.fillText(getDate(computedData.xAxis[0]), computedData.firstPos, graphSize + 20);
         ctx.beginPath();
@@ -434,7 +433,9 @@ function CreateChart(data, name) {
             r = counter <= 40 ? counter += 5 : counter;
         } else {
             r = counter > 0 ? counter -= 5 : counter = 0;
-            if(r === 0) fadingOut = false;
+            if(r === 0) {
+                fadingOut = false;
+            }
         }
         
         if(cntrPanel.selected) {
@@ -453,8 +454,8 @@ function CreateChart(data, name) {
     }
 
 
-    let l = cvs.offsetLeft, t = cvs.offsetTop;
-    cvs.onmousemove = function(e) {
+    let l = cvs2.offsetLeft, t = cvs2.offsetTop;
+    cvs2.onmousemove = function(e) {
         pos.x = e.pageX - l;
         pos.y = e.pageY - t;
         infoPanel.enabled = graphHover();
@@ -475,19 +476,19 @@ function CreateChart(data, name) {
          
       }
 
-    cvs.onmousedown = function(e) {
+    cvs2.onmousedown = function(e) {
         if(cpIsResizingLeft()) return cntrPanel.resizingLeft = true;
         if(cpIsResizingRight()) return cntrPanel.resizingRight = true;
         if(cpIsHover()) return cntrPanel.selected = true;
     }
-    cvs.onmouseup = function(e) {
+    cvs2.onmouseup = function(e) {
         cntrPanel.selected = false;
         cntrPanel.resizingLeft = false;
         cntrPanel.resizingRight = false;
         fadingOut = true;
     }
     
-    cvs.onmouseout = function(e) {
+    cvs2.onmouseout = function(e) {
         cntrPanel.selected = false;
         cntrPanel.resizingLeft = false;
         cntrPanel.resizingRight = false;
@@ -500,33 +501,36 @@ function CreateChart(data, name) {
         cancelAnimationFrame = window.cancelAnimationFrame || window.mozCancelAnimationFrame;
     
     let drow = function () {
+        requestAnimationFrame(drow)
         ctx.clearRect(0, 0, cvs.width, cvs.height);
+        ctx2.clearRect(0, 0, cvs2.width, cvs2.height);
         calculate();
         drowStaticLines();
         drowGraphLines();
         drowControlPanel();
         drowCursorEvents();
-        drowGraphInfo()
+        drowGraphInfo();
+
+        ctx2.drawImage(cvs, 0, 0);
     }
     
     drow();
 
 
-    let reqId = undefined;
-    let go = function() {
-        reqId = requestAnimationFrame(go)
-        drow()
-    }
-
-    let stop = function() {
-        cancelAnimationFrame(reqId);
-        reqId = undefined;
-    }
-
-    go();
-    // stop();
 
 
+    // let reqId = undefined;
+    // let go = function() {
+    //     if(!reqId) reqId = requestAnimationFrame(go)
+    //     drow();
+    // }
+
+    // let stop = function() {
+    //     if(reqId) cancelAnimationFrame(reqId);
+    //     reqId = undefined;
+    // }
+
+    // go()
 
 }
 
@@ -540,5 +544,5 @@ function ready() {
     for(let i = 0; i < json.length; i++) {
         new CreateChart(json[i], 'Chart ' + (i + 1));
     }
-}
+} 
 
